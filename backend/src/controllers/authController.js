@@ -1,5 +1,5 @@
 import User from '../models/User.js'
-import { sendTokenResponse } from '../utils/jwt.js'
+import { sendTokenResponse, signTempToken } from '../utils/jwt.js'
 import { generateReferralCode } from '../utils/referral.js'
 import { sendEmail, templates } from '../utils/emailService.js'
 
@@ -69,6 +69,15 @@ export const login = async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact support.' })
+    }
+
+    // If 2FA is enabled, return a short-lived temp token instead of the real JWT
+    if (user.twoFA?.enabled) {
+      return res.json({
+        success: true,
+        requiresTwoFA: true,
+        tempToken: signTempToken(user._id),
+      })
     }
 
     // Login alert email

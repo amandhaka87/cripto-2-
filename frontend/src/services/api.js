@@ -30,6 +30,16 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  verify2FALogin: (otp, tempToken) => api.post('/auth/2fa/verify-login', { otp }, {
+    headers: { Authorization: `Bearer ${tempToken}` },
+  }),
+}
+
+// 2FA Setup
+export const twoFAAPI = {
+  generate: () => api.post('/user/2fa/generate'),
+  enable: (otp) => api.post('/user/2fa/enable', { otp }),
+  disable: (otp) => api.post('/user/2fa/disable', { otp }),
 }
 
 // User

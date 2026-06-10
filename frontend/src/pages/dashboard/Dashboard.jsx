@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, TrendingUp, Users, Wallet, Settings, Bell,
   LogOut, ChevronRight, Copy, Check, Award, Gift, Zap, Trophy,
+  Shield, ShieldCheck, ShieldOff, QrCode, KeyRound,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import { userAPI } from '../../services/api'
+import { userAPI, twoFAAPI } from '../../services/api'
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={18} />, label: 'Overview',    id: 'overview',     to: null },
@@ -22,8 +23,15 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false)
   const [dashData, setDashData] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
-  const { user, logout } = useAuth()
+  const { user, setUser, logout } = useAuth()
   const navigate = useNavigate()
+
+  // 2FA state
+  const [twoFAStep, setTwoFAStep] = useState('idle') // idle | setup | confirm | disable
+  const [qrData, setQrData]     = useState(null)
+  const [twoFAOtp, setTwoFAOtp] = useState('')
+  const [twoFAMsg, setTwoFAMsg] = useState(null)
+  const [twoFALoading, setTwoFALoading] = useState(false)
 
   useEffect(() => {
     userAPI.getDashboard()
@@ -38,6 +46,57 @@ export default function Dashboard() {
     navigator.clipboard.writeText(user?.referralCode || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const show2FAMsg = (text, type = 'success') => {
+    setTwoFAMsg({ text, type })
+    setTimeout(() => setTwoFAMsg(null), 4000)
+  }
+
+  const handleGenerate2FA = async () => {
+    setTwoFALoading(true)
+    try {
+      const res = await twoFAAPI.generate()
+      setQrData(res.data)
+      setTwoFAStep('confirm')
+    } catch (err) {
+      show2FAMsg(err.response?.data?.message || 'Error generating QR', 'error')
+    } finally {
+      setTwoFALoading(false)
+    }
+  }
+
+  const handleEnable2FA = async (e) => {
+    e.preventDefault()
+    setTwoFALoading(true)
+    try {
+      await twoFAAPI.enable(twoFAOtp)
+      setUser(prev => ({ ...prev, twoFA: { ...prev.twoFA, enabled: true } }))
+      setTwoFAStep('idle')
+      setTwoFAOtp('')
+      setQrData(null)
+      show2FAMsg('2FA enabled! Your account is now more secure.')
+    } catch (err) {
+      show2FAMsg(err.response?.data?.message || 'Invalid OTP', 'error')
+    } finally {
+      setTwoFALoading(false)
+    }
+  }
+
+  const handleDisable2FA = async (e) => {
+    e.preventDefault()
+    setTwoFALoading(true)
+    try {
+      await twoFAAPI.disable(twoFAOtp)
+      setUser(prev => ({ ...prev, twoFA: { ...prev.twoFA, enabled: false } }))
+      setTwoFAStep('idle')
+      setTwoFAOtp('')
+      show2FAMsg('2FA disabled.')
+    } catch (err) {
+      show2FAMsg(err.response?.data?.message || 'Invalid OTP', 'error')
+    } finally {
+      setTwoFALoading(false)
+    }
   }
 
   const plan = dashData?.user?.activePlan
@@ -232,6 +291,137 @@ export default function Dashboard() {
                 )}
               </div>
             </>
+          ) : active === 'settings' ? (
+            <div style={{ maxWidth: '600px' }}>
+              <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1.2rem', marginBottom: '24px' }}>Security Settings</h2>
+
+              {/* Toast */}
+              {twoFAMsg && (
+                <div style={{ background: twoFAMsg.type === 'error' ? 'rgba(255,59,48,0.1)' : 'rgba(0,255,136,0.1)', border: `1px solid ${twoFAMsg.type === 'error' ? 'rgba(255,59,48,0.3)' : 'rgba(0,255,136,0.25)'}`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', color: twoFAMsg.type === 'error' ? '#FF6B6B' : '#00FF88', fontSize: '0.88rem', fontWeight: 600 }}>
+                  {twoFAMsg.text}
+                </div>
+              )}
+
+              {/* 2FA Card */}
+              <div style={{ background: 'rgba(22,24,48,0.8)', border: '1px solid rgba(123,97,255,0.15)', borderRadius: '16px', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: user?.twoFA?.enabled ? 'rgba(0,255,136,0.1)' : 'rgba(123,97,255,0.1)', border: `1px solid ${user?.twoFA?.enabled ? 'rgba(0,255,136,0.2)' : 'rgba(123,97,255,0.2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {user?.twoFA?.enabled ? <ShieldCheck size={22} style={{ color: '#00FF88' }} /> : <Shield size={22} style={{ color: '#7B61FF' }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Two-Factor Authentication</div>
+                      <div style={{ color: '#4A5568', fontSize: '0.78rem', marginTop: '2px' }}>Google Authenticator (TOTP)</div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', background: user?.twoFA?.enabled ? 'rgba(0,255,136,0.1)' : 'rgba(123,97,255,0.08)', color: user?.twoFA?.enabled ? '#00FF88' : '#7B61FF', border: `1px solid ${user?.twoFA?.enabled ? 'rgba(0,255,136,0.2)' : 'rgba(123,97,255,0.15)'}` }}>
+                    {user?.twoFA?.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+
+                <p style={{ color: '#A0AEC0', fontSize: '0.85rem', lineHeight: '1.6', marginBottom: '20px' }}>
+                  {user?.twoFA?.enabled
+                    ? 'Your account is protected with two-factor authentication. Every login requires a 6-digit code from your authenticator app.'
+                    : 'Add an extra layer of security. After enabling, you\'ll need a 6-digit code from Google Authenticator on every login.'}
+                </p>
+
+                {/* idle — show enable or disable button */}
+                {twoFAStep === 'idle' && (
+                  user?.twoFA?.enabled ? (
+                    <button onClick={() => setTwoFAStep('disable')}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: '10px', padding: '11px 20px', cursor: 'pointer', color: '#FF6B6B', fontWeight: 600, fontSize: '0.88rem' }}>
+                      <ShieldOff size={16} /> Disable 2FA
+                    </button>
+                  ) : (
+                    <button onClick={() => setTwoFAStep('setup')}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #7B61FF, #00D4FF)', border: 'none', borderRadius: '10px', padding: '11px 20px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>
+                      <QrCode size={16} /> Enable 2FA
+                    </button>
+                  )
+                )}
+
+                {/* setup — explain steps, generate QR */}
+                {twoFAStep === 'setup' && (
+                  <div>
+                    <div style={{ background: 'rgba(123,97,255,0.06)', border: '1px solid rgba(123,97,255,0.15)', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px', fontSize: '0.83rem', color: '#A0AEC0', lineHeight: '1.7' }}>
+                      <strong style={{ color: '#fff' }}>How to set up:</strong><br />
+                      1. Install <strong style={{ color: '#7B61FF' }}>Google Authenticator</strong> on your phone<br />
+                      2. Click "Show QR Code" below and scan it<br />
+                      3. Enter the 6-digit code shown in the app
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button onClick={handleGenerate2FA} disabled={twoFALoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #7B61FF, #00D4FF)', border: 'none', borderRadius: '10px', padding: '11px 20px', cursor: 'pointer', color: '#fff', fontWeight: 700, fontSize: '0.88rem', opacity: twoFALoading ? 0.7 : 1 }}>
+                        <QrCode size={16} /> {twoFALoading ? 'Generating...' : 'Show QR Code'}
+                      </button>
+                      <button onClick={() => setTwoFAStep('idle')}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '11px 20px', cursor: 'pointer', color: '#718096', fontSize: '0.88rem' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* confirm — show QR + OTP input */}
+                {twoFAStep === 'confirm' && qrData && (
+                  <form onSubmit={handleEnable2FA}>
+                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                      <p style={{ color: '#A0AEC0', fontSize: '0.82rem', marginBottom: '14px' }}>Scan this QR code with Google Authenticator:</p>
+                      <img src={qrData.qr} alt="2FA QR Code" style={{ width: '180px', height: '180px', borderRadius: '12px', border: '4px solid rgba(123,97,255,0.2)', background: '#fff', padding: '8px' }} />
+                      <div style={{ marginTop: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '8px 12px', display: 'inline-block' }}>
+                        <div style={{ color: '#4A5568', fontSize: '0.7rem', marginBottom: '3px' }}>Manual key</div>
+                        <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#A0AEC0', letterSpacing: '0.1em' }}>{qrData.secret}</div>
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', color: '#A0AEC0', fontSize: '0.82rem', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <KeyRound size={13} style={{ display: 'inline', marginRight: '6px' }} />
+                        Enter 6-digit Code
+                      </label>
+                      <input type="text" inputMode="numeric" maxLength={6} value={twoFAOtp} onChange={e => setTwoFAOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus
+                        style={{ width: '100%', padding: '13px', background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(123,97,255,0.2)', borderRadius: '10px', color: '#fff', fontSize: '1.4rem', outline: 'none', textAlign: 'center', letterSpacing: '0.4rem', fontFamily: 'Space Grotesk, monospace', boxSizing: 'border-box' }}
+                        onFocus={e => e.target.style.borderColor = '#7B61FF'}
+                        onBlur={e => e.target.style.borderColor = 'rgba(123,97,255,0.2)'} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="submit" disabled={twoFALoading || twoFAOtp.length !== 6}
+                        style={{ flex: 1, background: 'linear-gradient(135deg, #7B61FF, #00D4FF)', border: 'none', borderRadius: '10px', padding: '12px', cursor: twoFALoading || twoFAOtp.length !== 6 ? 'not-allowed' : 'pointer', color: '#fff', fontWeight: 700, fontSize: '0.9rem', opacity: twoFALoading || twoFAOtp.length !== 6 ? 0.6 : 1 }}>
+                        {twoFALoading ? 'Activating...' : 'Activate 2FA'}
+                      </button>
+                      <button type="button" onClick={() => { setTwoFAStep('idle'); setTwoFAOtp(''); setQrData(null) }}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 20px', cursor: 'pointer', color: '#718096', fontSize: '0.88rem' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* disable — OTP confirmation */}
+                {twoFAStep === 'disable' && (
+                  <form onSubmit={handleDisable2FA}>
+                    <p style={{ color: '#A0AEC0', fontSize: '0.85rem', marginBottom: '16px' }}>
+                      Enter your current Google Authenticator code to disable 2FA:
+                    </p>
+                    <div style={{ marginBottom: '16px' }}>
+                      <input type="text" inputMode="numeric" maxLength={6} value={twoFAOtp} onChange={e => setTwoFAOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus
+                        style={{ width: '100%', padding: '13px', background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(255,59,48,0.2)', borderRadius: '10px', color: '#fff', fontSize: '1.4rem', outline: 'none', textAlign: 'center', letterSpacing: '0.4rem', fontFamily: 'Space Grotesk, monospace', boxSizing: 'border-box' }}
+                        onFocus={e => e.target.style.borderColor = '#FF3B30'}
+                        onBlur={e => e.target.style.borderColor = 'rgba(255,59,48,0.2)'} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="submit" disabled={twoFALoading || twoFAOtp.length !== 6}
+                        style={{ flex: 1, background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.3)', borderRadius: '10px', padding: '12px', cursor: twoFALoading || twoFAOtp.length !== 6 ? 'not-allowed' : 'pointer', color: '#FF6B6B', fontWeight: 700, fontSize: '0.9rem', opacity: twoFALoading || twoFAOtp.length !== 6 ? 0.6 : 1 }}>
+                        {twoFALoading ? 'Disabling...' : 'Confirm Disable'}
+                      </button>
+                      <button type="button" onClick={() => { setTwoFAStep('idle'); setTwoFAOtp('') }}
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 20px', cursor: 'pointer', color: '#718096', fontSize: '0.88rem' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', flexDirection: 'column', gap: '16px' }}>
               <div style={{ width: '80px', height: '80px', borderRadius: '20px', background: 'rgba(123,97,255,0.1)', border: '1px solid rgba(123,97,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>

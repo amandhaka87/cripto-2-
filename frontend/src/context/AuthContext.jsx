@@ -24,11 +24,21 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await authAPI.login({ email, password })
+    // 2FA required — return flag so Login page can show OTP step
+    if (res.data.requiresTwoFA) {
+      return { requiresTwoFA: true, tempToken: res.data.tempToken }
+    }
     const { token, user } = res.data
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(user))
     setUser(user)
     return user
+  }
+
+  const completeLogin = (token, user) => {
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(user))
+    setUser(user)
   }
 
   const register = async (formData) => {
@@ -47,7 +57,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, completeLogin, register, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   )
