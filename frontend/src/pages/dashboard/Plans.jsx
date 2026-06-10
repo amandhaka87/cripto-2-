@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Check, ArrowLeft, Wallet } from 'lucide-react'
 
 const PLANS = [
@@ -39,6 +39,7 @@ const PLANS = [
 export default function Plans() {
   const [amount, setAmount] = useState('')
   const [selected, setSelected] = useState(null)
+  const navigate = useNavigate()
 
   const plan = selected !== null ? PLANS[selected] : null
   const monthly = plan && amount ? (parseFloat(amount) * plan.roi / 100).toFixed(2) : 0
@@ -129,7 +130,10 @@ export default function Plans() {
                 ))}
               </div>
             </div>
-            <button className="btn-primary" style={{ marginTop: '20px', width: '100%', padding: '14px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <button
+              onClick={() => navigate(`/payment?plan=${plan.name}`)}
+              className="btn-primary"
+              style={{ marginTop: '20px', width: '100%', padding: '14px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <Wallet size={18} /> Proceed to USDT Payment
             </button>
           </div>

@@ -46,6 +46,15 @@ export const planAPI = {
   activate: (data) => api.post('/plans/activate', data),
 }
 
+// Deposit
+export const depositAPI = {
+  getWalletInfo: () => api.get('/deposit/wallet-info'),
+  submit: (data) => api.post('/deposit/submit', data),
+  getPending: () => api.get('/deposit/pending'),
+  confirm: (txId) => api.patch(`/deposit/${txId}/confirm`),
+  reject: (txId, reason) => api.patch(`/deposit/${txId}/reject`, { reason }),
+}
+
 // Admin
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),
