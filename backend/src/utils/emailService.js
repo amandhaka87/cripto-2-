@@ -215,6 +215,55 @@ export const templates = {
     </p>
     ${btn('Resubmit KYC', `${process.env.CLIENT_URL}/dashboard`)}
   `),
+
+  withdrawalSubmitted: (name, amount, walletAddress) => wrapper(`
+    <h2 style="color:#fff;font-size:1.3rem;margin:0 0 8px;">Withdrawal Requested ⏳</h2>
+    <p style="color:#A0AEC0;line-height:1.7;margin:0 0 20px;">
+      Hi <strong style="color:#fff">${name}</strong>, your withdrawal request has been received. Our team will process it within <strong style="color:#fff">24–48 hours</strong>.
+    </p>
+    <table width="100%" style="background:rgba(123,97,255,0.06);border:1px solid rgba(123,97,255,0.15);border-radius:12px;padding:16px;" cellpadding="0" cellspacing="0">
+      ${highlight('Amount', `$${amount} USDT`, '#00D4FF')}
+      ${highlight('To Wallet', walletAddress, '#A0AEC0')}
+      ${highlight('Network', 'TRC-20', '#00FF88')}
+      ${highlight('Status', '⏳ Processing', '#F6C90E')}
+    </table>
+    <p style="color:#A0AEC0;font-size:0.85rem;margin:16px 0 0;">
+      Funds have been reserved from your balance. You will be notified once sent.
+    </p>
+    ${btn('View Wallet', `${process.env.CLIENT_URL}/withdraw`)}
+  `),
+
+  withdrawalApproved: (name, amount, txHash) => wrapper(`
+    <h2 style="color:#00FF88;font-size:1.3rem;margin:0 0 8px;">Withdrawal Sent! 🚀</h2>
+    <p style="color:#A0AEC0;line-height:1.7;margin:0 0 20px;">
+      Great news <strong style="color:#fff">${name}</strong>! Your USDT withdrawal has been processed and sent to your wallet.
+    </p>
+    <table width="100%" style="background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.2);border-radius:12px;padding:16px;" cellpadding="0" cellspacing="0">
+      ${highlight('Amount Sent', `$${amount} USDT`, '#00FF88')}
+      ${highlight('Network', 'TRC-20', '#00D4FF')}
+      ${txHash ? highlight('TxHash', txHash, '#A0AEC0') : ''}
+      ${highlight('Status', '✅ Completed', '#00FF88')}
+    </table>
+    <p style="color:#A0AEC0;font-size:0.85rem;margin:16px 0 0;">
+      Funds may take a few minutes to appear in your wallet depending on network congestion.
+    </p>
+    ${btn('View Dashboard', `${process.env.CLIENT_URL}/dashboard`)}
+  `),
+
+  withdrawalRejected: (name, amount, reason) => wrapper(`
+    <h2 style="color:#FF3B30;font-size:1.3rem;margin:0 0 8px;">Withdrawal Rejected ❌</h2>
+    <p style="color:#A0AEC0;line-height:1.7;margin:0 0 20px;">
+      Hi <strong style="color:#fff">${name}</strong>, unfortunately your withdrawal request could not be processed. Your funds have been <strong style="color:#00FF88">returned to your balance</strong>.
+    </p>
+    <table width="100%" style="background:rgba(255,59,48,0.05);border:1px solid rgba(255,59,48,0.2);border-radius:12px;padding:16px;" cellpadding="0" cellspacing="0">
+      ${highlight('Amount', `$${amount} USDT`, '#A0AEC0')}
+      ${highlight('Reason', reason || 'Unable to process at this time', '#FF6B6B')}
+    </table>
+    <p style="color:#A0AEC0;font-size:0.85rem;margin:16px 0 0;">
+      Please try again or contact support if you believe this is an error.
+    </p>
+    ${btn('Try Again', `${process.env.CLIENT_URL}/withdraw`)}
+  `),
 }
 
 // ─── SEND FUNCTION ──────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
+import { sendEmail, templates } from '../utils/emailService.js'
 
 export const getDashboard = async (req, res) => {
   try {
@@ -62,6 +63,58 @@ export const getReferrals = async (req, res) => {
         referrals,
       },
     })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const requestWithdrawal = async (req, res) => {
+  try {
+    const { amount, walletAddress } = req.body
+    const amt = parseFloat(amount)
+
+    if (!amt || !walletAddress) {
+      return res.status(400).json({ success: false, message: 'Amount and wallet address are required' })
+    }
+    if (amt < 10) {
+      return res.status(400).json({ success: false, message: 'Minimum withdrawal is $10 USDT' })
+    }
+
+    const user = await User.findById(req.user._id)
+    if (user.wallet.balance < amt) {
+      return res.status(400).json({ success: false, message: 'Insufficient balance' })
+    }
+
+    // Hold funds immediately
+    user.wallet.balance -= amt
+    await user.save()
+
+    const tx = await Transaction.create({
+      user: user._id,
+      type: 'withdrawal',
+      amount: amt,
+      status: 'pending',
+      walletAddress,
+      notes: `Withdrawal request to ${walletAddress}`,
+    })
+
+    sendEmail({
+      to: user.email,
+      subject: `⏳ Withdrawal Request: $${amt} USDT`,
+      html: templates.withdrawalSubmitted(user.name, amt, walletAddress),
+    })
+
+    res.status(201).json({ success: true, message: 'Withdrawal request submitted', transactionId: tx._id })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const getWithdrawals = async (req, res) => {
+  try {
+    const withdrawals = await Transaction.find({ user: req.user._id, type: 'withdrawal' })
+      .sort({ createdAt: -1 })
+    res.json({ success: true, data: withdrawals })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

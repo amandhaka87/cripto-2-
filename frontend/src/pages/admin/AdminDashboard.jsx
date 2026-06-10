@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Users, DollarSign, TrendingUp, AlertCircle, CheckCircle,
   XCircle, Search, Zap, LayoutDashboard, LogOut,
-  Shield, Activity, Wallet,
+  Shield, Activity, Wallet, ArrowUpRight,
 } from 'lucide-react'
 import { adminAPI, depositAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -27,6 +27,7 @@ const NAV = [
   { id: 'users', label: 'Users', icon: <Users size={17} /> },
   { id: 'deposits', label: 'Deposits', icon: <Wallet size={17} /> },
   { id: 'kyc', label: 'KYC Queue', icon: <Shield size={17} /> },
+  { id: 'withdrawals',  label: 'Withdrawals',  icon: <ArrowUpRight size={17} /> },
   { id: 'transactions', label: 'Transactions', icon: <Activity size={17} /> },
 ]
 
@@ -37,7 +38,9 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('')
   const [users, setUsers] = useState(MOCK_USERS)
   const [deposits, setDeposits] = useState([])
+  const [withdrawals, setWithdrawals] = useState([])
   const [loadingDeposits, setLoadingDeposits] = useState(false)
+  const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
   const [actionMsg, setActionMsg] = useState('')
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -49,6 +52,13 @@ export default function AdminDashboard() {
         .then(res => setDeposits(res.data.data))
         .catch(() => setDeposits([]))
         .finally(() => setLoadingDeposits(false))
+    }
+    if (active === 'withdrawals') {
+      setLoadingWithdrawals(true)
+      adminAPI.getPendingWithdrawals()
+        .then(res => setWithdrawals(res.data.data))
+        .catch(() => setWithdrawals([]))
+        .finally(() => setLoadingWithdrawals(false))
     }
   }, [active])
 
@@ -91,6 +101,28 @@ export default function AdminDashboard() {
     u.email.toLowerCase().includes(search.toLowerCase())
   )
 
+  const handleApproveWithdrawal = async (txId) => {
+    const txHash = prompt('Enter blockchain TxHash (optional):') || ''
+    try {
+      await adminAPI.approveWithdrawal(txId, txHash)
+      setWithdrawals(prev => prev.filter(w => w._id !== txId))
+      showMsg('Withdrawal approved — user notified!')
+    } catch (err) {
+      showMsg(err.response?.data?.message || 'Error approving withdrawal')
+    }
+  }
+
+  const handleRejectWithdrawal = async (txId) => {
+    const reason = prompt('Rejection reason:') || 'Rejected by admin'
+    try {
+      await adminAPI.rejectWithdrawal(txId, reason)
+      setWithdrawals(prev => prev.filter(w => w._id !== txId))
+      showMsg('Withdrawal rejected — balance refunded to user')
+    } catch (err) {
+      showMsg(err.response?.data?.message || 'Error rejecting withdrawal')
+    }
+  }
+
   const handleLogout = () => { logout(); navigate('/') }
 
   return (
@@ -115,6 +147,11 @@ export default function AdminDashboard() {
               {item.id === 'deposits' && deposits.length > 0 && (
                 <span style={{ marginLeft: 'auto', background: '#FF3B30', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '20px' }}>
                   {deposits.length}
+                </span>
+              )}
+              {item.id === 'withdrawals' && withdrawals.length > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#F6C90E', color: '#000', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '20px' }}>
+                  {withdrawals.length}
                 </span>
               )}
             </button>
@@ -315,6 +352,72 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* WITHDRAWALS QUEUE */}
+          {active === 'withdrawals' && (
+            <div style={{ background: 'rgba(20,22,44,0.8)', border: '1px solid rgba(123,97,255,0.12)', borderRadius: '14px', padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div>
+                  <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 700, fontSize: '1rem' }}>Pending Withdrawals</h2>
+                  <p style={{ color: '#4A5568', fontSize: '0.78rem', marginTop: '3px' }}>Review and process USDT withdrawal requests</p>
+                </div>
+                {withdrawals.length > 0 && (
+                  <span style={{ background: 'rgba(246,201,14,0.1)', color: '#F6C90E', border: '1px solid rgba(246,201,14,0.2)', fontSize: '0.78rem', fontWeight: 700, padding: '5px 12px', borderRadius: '20px' }}>
+                    {withdrawals.length} pending
+                  </span>
+                )}
+              </div>
+
+              {loadingWithdrawals ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid rgba(123,97,255,0.2)', borderTop: '3px solid #7B61FF', animation: 'spin 1s linear infinite' }} />
+                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+                </div>
+              ) : withdrawals.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px', color: '#4A5568' }}>
+                  <CheckCircle size={36} style={{ margin: '0 auto 12px', color: '#00FF88', opacity: 0.5 }} />
+                  <p>No pending withdrawals — all clear!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {withdrawals.map(w => (
+                    <div key={w._id} style={{ background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(246,201,14,0.15)', borderRadius: '12px', padding: '18px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '3px' }}>{w.user?.name || 'User'}</div>
+                          <div style={{ color: '#4A5568', fontSize: '0.78rem' }}>{w.user?.email}</div>
+                        </div>
+                        <div style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 800, fontSize: '1.2rem', color: '#F6C90E' }}>
+                          ${w.amount?.toLocaleString()} USDT
+                        </div>
+                      </div>
+
+                      <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px 12px', margin: '14px 0', fontFamily: 'monospace', fontSize: '0.8rem', color: '#A0AEC0', wordBreak: 'break-all' }}>
+                        <span style={{ color: '#4A5568', fontSize: '0.72rem', display: 'block', marginBottom: '3px' }}>To Wallet (TRC-20)</span>
+                        {w.walletAddress}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ color: '#718096', fontSize: '0.78rem' }}>
+                          Requested: {new Date(w.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button onClick={() => handleApproveWithdrawal(w._id)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', color: '#00FF88', fontWeight: 600, fontSize: '0.82rem' }}>
+                            <CheckCircle size={14} /> Approve & Send
+                          </button>
+                          <button onClick={() => handleRejectWithdrawal(w._id)}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.25)', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', color: '#FF3B30', fontWeight: 600, fontSize: '0.82rem' }}>
+                            <XCircle size={14} /> Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

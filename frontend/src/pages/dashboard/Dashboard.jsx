@@ -10,7 +10,7 @@ import { userAPI } from '../../services/api'
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={18} />, label: 'Overview',    id: 'overview',     to: null },
   { icon: <TrendingUp size={18} />,      label: 'My Plans',    id: 'plans',         to: '/plans' },
-  { icon: <Wallet size={18} />,          label: 'Wallet',      id: 'wallet',        to: null },
+  { icon: <Wallet size={18} />,          label: 'Withdraw',    id: 'withdraw',      to: '/withdraw' },
   { icon: <Users size={18} />,           label: 'Referrals',   id: 'referrals',     to: '/referrals' },
   { icon: <Trophy size={18} />,          label: 'Leaderboard', id: 'leaderboard',   to: '/leaderboard' },
   { icon: <Gift size={18} />,            label: 'Spin Wheel',  id: 'spin',          to: '/spin' },

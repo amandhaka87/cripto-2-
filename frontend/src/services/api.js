@@ -38,6 +38,8 @@ export const userAPI = {
   getTransactions: (page = 1) => api.get(`/user/transactions?page=${page}`),
   updateProfile: (data) => api.put('/user/profile', data),
   getReferrals: () => api.get('/user/referrals'),
+  requestWithdrawal: (data) => api.post('/user/withdraw', data),
+  getWithdrawals: () => api.get('/user/withdrawals'),
 }
 
 // Plans
@@ -70,6 +72,9 @@ export const adminAPI = {
   updateKYC: (userId, data) => api.patch(`/admin/users/${userId}/kyc`, data),
   toggleUser: (userId) => api.patch(`/admin/users/${userId}/toggle`),
   creditROI: (userId) => api.post(`/admin/users/${userId}/credit-roi`),
+  getPendingWithdrawals: () => api.get('/admin/withdrawals'),
+  approveWithdrawal: (txId, txHash) => api.patch(`/admin/withdrawals/${txId}/approve`, { txHash }),
+  rejectWithdrawal: (txId, reason) => api.patch(`/admin/withdrawals/${txId}/reject`, { reason }),
 }
 
 export default api

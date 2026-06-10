@@ -11,6 +11,7 @@ import Payment from './pages/dashboard/Payment'
 import Referrals from './pages/dashboard/Referrals'
 import Leaderboard from './pages/dashboard/Leaderboard'
 import SpinWheel from './pages/dashboard/SpinWheel'
+import Withdraw from './pages/dashboard/Withdraw'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
           <Route path="/referrals" element={<ProtectedRoute><Referrals /></ProtectedRoute>} />
           <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
           <Route path="/spin" element={<ProtectedRoute><SpinWheel /></ProtectedRoute>} />
+          <Route path="/withdraw" element={<ProtectedRoute><Withdraw /></ProtectedRoute>} />
 
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Routes>

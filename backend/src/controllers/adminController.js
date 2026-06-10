@@ -126,3 +126,75 @@ export const creditROI = async (req, res) => {
     res.status(500).json({ success: false, message: err.message })
   }
 }
+
+export const getPendingWithdrawals = async (req, res) => {
+  try {
+    const withdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' })
+      .populate('user', 'name email phone')
+      .sort({ createdAt: -1 })
+    res.json({ success: true, data: withdrawals, count: withdrawals.length })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const approveWithdrawal = async (req, res) => {
+  try {
+    const { txId } = req.params
+    const { txHash } = req.body
+
+    const tx = await Transaction.findById(txId).populate('user')
+    if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found' })
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Transaction already ${tx.status}` })
+    }
+
+    tx.status = 'completed'
+    tx.txHash = txHash || ''
+    tx.processedAt = new Date()
+    await tx.save()
+
+    sendEmail({
+      to: tx.user.email,
+      subject: `✅ Withdrawal Sent: $${tx.amount} USDT`,
+      html: templates.withdrawalApproved(tx.user.name, tx.amount, txHash),
+    })
+
+    res.json({ success: true, message: 'Withdrawal approved and marked as sent' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const rejectWithdrawal = async (req, res) => {
+  try {
+    const { txId } = req.params
+    const { reason } = req.body
+
+    const tx = await Transaction.findById(txId).populate('user')
+    if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found' })
+    if (tx.status !== 'pending') {
+      return res.status(400).json({ success: false, message: `Transaction already ${tx.status}` })
+    }
+
+    tx.status = 'rejected'
+    tx.notes = reason || 'Rejected by admin'
+    tx.processedAt = new Date()
+    await tx.save()
+
+    // Refund balance
+    await User.findByIdAndUpdate(tx.user._id, {
+      $inc: { 'wallet.balance': tx.amount },
+    })
+
+    sendEmail({
+      to: tx.user.email,
+      subject: `❌ Withdrawal Rejected — $${tx.amount} Refunded`,
+      html: templates.withdrawalRejected(tx.user.name, tx.amount, reason),
+    })
+
+    res.json({ success: true, message: 'Withdrawal rejected, balance refunded' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
