@@ -1,5 +1,6 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
+import { sendEmail, templates } from '../utils/emailService.js'
 
 export const getStats = async (req, res) => {
   try {
@@ -72,6 +73,14 @@ export const updateKYC = async (req, res) => {
     )
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' })
+
+    // Email KYC result
+    if (status === 'verified') {
+      sendEmail({ to: user.email, subject: '✅ KYC Verified — Full Access Granted', html: templates.kycApproved(user.name) })
+    } else {
+      sendEmail({ to: user.email, subject: '❌ KYC Rejected — Action Required', html: templates.kycRejected(user.name, rejectionReason) })
+    }
+
     res.json({ success: true, message: `KYC ${status}`, user: user.toSafeObject() })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -104,6 +113,13 @@ export const creditROI = async (req, res) => {
 
     await user.save()
     await Transaction.create({ user: userId, type: 'roi_credit', amount: roiAmount, status: 'completed', plan: user.activePlan.name })
+
+    // Email ROI credit
+    sendEmail({
+      to: user.email,
+      subject: `💰 Monthly ROI Credited: +$${roiAmount} USDT`,
+      html: templates.roiCredited(user.name, user.activePlan.name, roiAmount, user.wallet.balance.toFixed(2)),
+    })
 
     res.json({ success: true, message: `ROI of $${roiAmount} credited`, roiAmount })
   } catch (err) {

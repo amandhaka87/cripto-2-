@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import { sendTokenResponse } from '../utils/jwt.js'
 import { generateReferralCode } from '../utils/referral.js'
+import { sendEmail, templates } from '../utils/emailService.js'
 
 const PLAN_CONFIG = {
   Silver:   { roi: 8,  durationMonths: 3 },
@@ -38,6 +39,13 @@ export const register = async (req, res) => {
       await referrer.save()
     }
 
+    // Welcome email
+    sendEmail({
+      to: user.email,
+      subject: '🎉 Welcome to CriptoX — Your Account is Ready!',
+      html: templates.welcome(user.name, newReferralCode),
+    })
+
     sendTokenResponse(user, 201, res)
   } catch (err) {
     if (err.code === 11000) {
@@ -62,6 +70,14 @@ export const login = async (req, res) => {
     if (!user.isActive) {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact support.' })
     }
+
+    // Login alert email
+    const now = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+    sendEmail({
+      to: user.email,
+      subject: '🔐 New Login to Your CriptoX Account',
+      html: templates.loginAlert(user.name, now, null),
+    })
 
     sendTokenResponse(user, 200, res)
   } catch (err) {

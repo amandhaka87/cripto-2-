@@ -1,5 +1,6 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
+import { sendEmail, templates } from '../utils/emailService.js'
 
 const PLANS = {
   Silver:   { roi: 8,  durationMonths: 3,  min: 100,   max: 999   },
@@ -55,6 +56,13 @@ export const submitDeposit = async (req, res) => {
       'activePlan.startDate': new Date(),
       'activePlan.endDate': endDate,
       'activePlan.status': 'pending',
+    })
+
+    // Email: deposit received
+    sendEmail({
+      to: req.user.email,
+      subject: '⏳ Deposit Received — Pending Verification',
+      html: templates.depositSubmitted(req.user.name, planName, amt, txHash),
     })
 
     res.status(201).json({
@@ -117,9 +125,9 @@ export const confirmDeposit = async (req, res) => {
       const pct = REFERRAL_PCT[tx.plan] || 3
       const bonus = (tx.amount * pct) / 100
 
-      await User.findByIdAndUpdate(depositor.referredBy, {
+      const referrer = await User.findByIdAndUpdate(depositor.referredBy, {
         $inc: { 'wallet.balance': bonus, 'wallet.totalEarned': bonus, referralEarnings: bonus },
-      })
+      }, { new: true })
 
       await Transaction.create({
         user: depositor.referredBy,
@@ -130,7 +138,24 @@ export const confirmDeposit = async (req, res) => {
         notes: `Referral bonus (${pct}%) from ${depositor.name}`,
         processedAt: new Date(),
       })
+
+      // Email referrer
+      if (referrer) {
+        sendEmail({
+          to: referrer.email,
+          subject: `🎁 Referral Bonus: +$${bonus} USDT Credited!`,
+          html: templates.referralBonus(referrer.name, depositor.name, tx.plan, bonus),
+        })
+      }
     }
+
+    // Email user: plan activated
+    const monthlyRoi = ((tx.amount * (depositor?.activePlan?.roi || 0)) / 100).toFixed(2)
+    sendEmail({
+      to: tx.user.email,
+      subject: `🚀 ${tx.plan} Plan Activated — Welcome to CriptoX!`,
+      html: templates.depositConfirmed(tx.user.name, tx.plan, tx.amount, monthlyRoi),
+    })
 
     res.json({ success: true, message: 'Deposit confirmed. Plan activated.' })
   } catch (err) {
@@ -156,9 +181,19 @@ export const rejectDeposit = async (req, res) => {
     await tx.save()
 
     // Reset user plan
-    await User.findByIdAndUpdate(tx.user, {
+    const rejectedUser = await User.findByIdAndUpdate(tx.user, {
       $unset: { activePlan: '' },
-    })
+    }, { new: true }).populate('user')
+
+    // Email: deposit rejected
+    const userDoc = await User.findById(tx.user)
+    if (userDoc) {
+      sendEmail({
+        to: userDoc.email,
+        subject: '❌ Deposit Verification Failed',
+        html: templates.depositRejected(userDoc.name, tx.plan, tx.amount, reason),
+      })
+    }
 
     res.json({ success: true, message: 'Deposit rejected.' })
   } catch (err) {
