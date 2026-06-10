@@ -1,6 +1,8 @@
 import express from 'express'
 import { protect } from '../middleware/auth.js'
 import User from '../models/User.js'
+import Transaction from '../models/Transaction.js'
+import { createNotification } from '../controllers/notificationController.js'
 
 const router = express.Router()
 router.use(protect)
@@ -92,6 +94,20 @@ router.post('/spin', async (req, res) => {
         $inc: { 'wallet.balance': reward.amount, 'wallet.totalEarned': reward.amount },
         lastSpinDate: new Date(),
       })
+      await Transaction.create({
+        user: req.user._id,
+        type: 'spin_reward',
+        amount: reward.amount,
+        status: 'completed',
+        notes: `Spin wheel reward: ${reward.label}`,
+        processedAt: new Date(),
+      })
+      createNotification(
+        req.user._id,
+        'Spin Reward Won!',
+        `You won ${reward.label} from the daily spin wheel. Credited to your wallet.`,
+        'spin'
+      )
     } else {
       await User.findByIdAndUpdate(req.user._id, { lastSpinDate: new Date() })
     }

@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
 import { sendEmail, templates } from '../utils/emailService.js'
+import { createNotification } from './notificationController.js'
 
 export const getStats = async (req, res) => {
   try {
@@ -74,11 +75,12 @@ export const updateKYC = async (req, res) => {
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' })
 
-    // Email KYC result
     if (status === 'verified') {
       sendEmail({ to: user.email, subject: '✅ KYC Verified — Full Access Granted', html: templates.kycApproved(user.name) })
+      createNotification(userId, 'KYC Verified', 'Your identity has been verified. You now have full access to all features.', 'kyc')
     } else {
       sendEmail({ to: user.email, subject: '❌ KYC Rejected — Action Required', html: templates.kycRejected(user.name, rejectionReason) })
+      createNotification(userId, 'KYC Rejected', `Your KYC was rejected. Reason: ${rejectionReason || 'Documents unclear'}. Please resubmit.`, 'kyc')
     }
 
     res.json({ success: true, message: `KYC ${status}`, user: user.toSafeObject() })
@@ -114,12 +116,18 @@ export const creditROI = async (req, res) => {
     await user.save()
     await Transaction.create({ user: userId, type: 'roi_credit', amount: roiAmount, status: 'completed', plan: user.activePlan.name })
 
-    // Email ROI credit
     sendEmail({
       to: user.email,
       subject: `💰 Monthly ROI Credited: +$${roiAmount} USDT`,
       html: templates.roiCredited(user.name, user.activePlan.name, roiAmount, user.wallet.balance.toFixed(2)),
     })
+
+    createNotification(
+      userId,
+      'Monthly ROI Credited',
+      `$${roiAmount} ROI has been added to your wallet from your ${user.activePlan.name} plan.`,
+      'roi'
+    )
 
     res.json({ success: true, message: `ROI of $${roiAmount} credited`, roiAmount })
   } catch (err) {
@@ -160,6 +168,13 @@ export const approveWithdrawal = async (req, res) => {
       html: templates.withdrawalApproved(tx.user.name, tx.amount, txHash),
     })
 
+    createNotification(
+      tx.user._id,
+      'Withdrawal Approved',
+      `Your withdrawal of $${tx.amount} USDT has been processed and sent to your wallet.`,
+      'withdrawal'
+    )
+
     res.json({ success: true, message: 'Withdrawal approved and marked as sent' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -192,6 +207,13 @@ export const rejectWithdrawal = async (req, res) => {
       subject: `❌ Withdrawal Rejected — $${tx.amount} Refunded`,
       html: templates.withdrawalRejected(tx.user.name, tx.amount, reason),
     })
+
+    createNotification(
+      tx.user._id,
+      'Withdrawal Rejected',
+      `Your withdrawal of $${tx.amount} was rejected. Reason: ${reason || 'Admin review failed'}. Amount has been refunded to your wallet.`,
+      'withdrawal'
+    )
 
     res.json({ success: true, message: 'Withdrawal rejected, balance refunded' })
   } catch (err) {

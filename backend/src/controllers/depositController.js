@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
 import { sendEmail, templates } from '../utils/emailService.js'
+import { createNotification } from './notificationController.js'
 
 const PLANS = {
   Silver:   { roi: 8,  durationMonths: 3,  min: 100,   max: 999   },
@@ -58,12 +59,18 @@ export const submitDeposit = async (req, res) => {
       'activePlan.status': 'pending',
     })
 
-    // Email: deposit received
     sendEmail({
       to: req.user.email,
       subject: '⏳ Deposit Received — Pending Verification',
       html: templates.depositSubmitted(req.user.name, planName, amt, txHash),
     })
+
+    createNotification(
+      req.user._id,
+      'Deposit Received',
+      `Your $${amt} deposit for ${planName} plan is under review. We'll confirm within 24 hours.`,
+      'deposit'
+    )
 
     res.status(201).json({
       success: true,
@@ -146,16 +153,28 @@ export const confirmDeposit = async (req, res) => {
           subject: `🎁 Referral Bonus: +$${bonus} USDT Credited!`,
           html: templates.referralBonus(referrer.name, depositor.name, tx.plan, bonus),
         })
+        createNotification(
+          depositor.referredBy,
+          'Referral Bonus Credited',
+          `You earned $${bonus} referral bonus because ${depositor.name} activated their ${tx.plan} plan.`,
+          'referral'
+        )
       }
     }
 
-    // Email user: plan activated
     const monthlyRoi = ((tx.amount * (depositor?.activePlan?.roi || 0)) / 100).toFixed(2)
     sendEmail({
       to: tx.user.email,
       subject: `🚀 ${tx.plan} Plan Activated — Welcome to CriptoX!`,
       html: templates.depositConfirmed(tx.user.name, tx.plan, tx.amount, monthlyRoi),
     })
+
+    createNotification(
+      tx.user._id,
+      'Deposit Confirmed',
+      `Your $${tx.amount} deposit is verified. ${tx.plan} plan is now active. Monthly ROI: $${monthlyRoi}.`,
+      'deposit'
+    )
 
     res.json({ success: true, message: 'Deposit confirmed. Plan activated.' })
   } catch (err) {
@@ -181,9 +200,7 @@ export const rejectDeposit = async (req, res) => {
     await tx.save()
 
     // Reset user plan
-    const rejectedUser = await User.findByIdAndUpdate(tx.user, {
-      $unset: { activePlan: '' },
-    }, { new: true }).populate('user')
+    await User.findByIdAndUpdate(tx.user, { $unset: { activePlan: '' } })
 
     // Email: deposit rejected
     const userDoc = await User.findById(tx.user)
@@ -193,6 +210,12 @@ export const rejectDeposit = async (req, res) => {
         subject: '❌ Deposit Verification Failed',
         html: templates.depositRejected(userDoc.name, tx.plan, tx.amount, reason),
       })
+      createNotification(
+        tx.user,
+        'Deposit Rejected',
+        `Your $${tx.amount} deposit for ${tx.plan} plan was rejected. Reason: ${reason || 'Invalid transaction'}. Please try again.`,
+        'deposit'
+      )
     }
 
     res.json({ success: true, message: 'Deposit rejected.' })

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, TrendingUp, Users, Wallet, Settings, Bell,
+  LayoutDashboard, TrendingUp, Users, Wallet, Settings,
   LogOut, ChevronRight, Copy, Check, Award, Gift, Zap, Trophy,
   Shield, ShieldCheck, ShieldOff, QrCode, KeyRound,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { userAPI, twoFAAPI } from '../../services/api'
+import NotificationBell from '../../components/NotificationBell'
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard size={18} />, label: 'Overview',    id: 'overview',     to: null },
@@ -166,9 +167,7 @@ export default function Dashboard() {
             <p style={{ color: '#4A5568', fontSize: '0.8rem', marginTop: '2px' }}>Your investment dashboard</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button style={{ background: 'rgba(123,97,255,0.1)', border: '1px solid rgba(123,97,255,0.2)', borderRadius: '10px', padding: '8px', cursor: 'pointer', color: '#7B61FF', display: 'flex' }}>
-              <Bell size={18} />
-            </button>
+            <NotificationBell />
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #7B61FF, #00D4FF)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.9rem' }}>
               {user?.name?.charAt(0)}
             </div>

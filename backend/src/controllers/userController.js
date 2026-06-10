@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import Transaction from '../models/Transaction.js'
 import { sendEmail, templates } from '../utils/emailService.js'
+import { createNotification } from './notificationController.js'
 
 export const getDashboard = async (req, res) => {
   try {
@@ -103,6 +104,13 @@ export const requestWithdrawal = async (req, res) => {
       subject: `⏳ Withdrawal Request: $${amt} USDT`,
       html: templates.withdrawalSubmitted(user.name, amt, walletAddress),
     })
+
+    createNotification(
+      user._id,
+      'Withdrawal Request Submitted',
+      `Your withdrawal request for $${amt} USDT has been submitted. Admin will process it within 24 hours.`,
+      'withdrawal'
+    )
 
     res.status(201).json({ success: true, message: 'Withdrawal request submitted', transactionId: tx._id })
   } catch (err) {
