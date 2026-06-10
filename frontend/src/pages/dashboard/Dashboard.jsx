@@ -2,18 +2,19 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, TrendingUp, Users, Wallet, Settings, Bell,
-  LogOut, ChevronRight, Copy, Check, Award, Gift, Zap,
+  LogOut, ChevronRight, Copy, Check, Award, Gift, Zap, Trophy,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { userAPI } from '../../services/api'
 
 const NAV_ITEMS = [
-  { icon: <LayoutDashboard size={18} />, label: 'Overview', id: 'overview' },
-  { icon: <TrendingUp size={18} />, label: 'My Plans', id: 'plans' },
-  { icon: <Wallet size={18} />, label: 'Wallet', id: 'wallet' },
-  { icon: <Users size={18} />, label: 'Referrals', id: 'referrals' },
-  { icon: <Award size={18} />, label: 'Rewards', id: 'rewards' },
-  { icon: <Settings size={18} />, label: 'Settings', id: 'settings' },
+  { icon: <LayoutDashboard size={18} />, label: 'Overview',    id: 'overview',     to: null },
+  { icon: <TrendingUp size={18} />,      label: 'My Plans',    id: 'plans',         to: '/plans' },
+  { icon: <Wallet size={18} />,          label: 'Wallet',      id: 'wallet',        to: null },
+  { icon: <Users size={18} />,           label: 'Referrals',   id: 'referrals',     to: '/referrals' },
+  { icon: <Trophy size={18} />,          label: 'Leaderboard', id: 'leaderboard',   to: '/leaderboard' },
+  { icon: <Gift size={18} />,            label: 'Spin Wheel',  id: 'spin',          to: '/spin' },
+  { icon: <Settings size={18} />,        label: 'Settings',    id: 'settings',      to: null },
 ]
 
 export default function Dashboard() {
@@ -62,14 +63,20 @@ export default function Dashboard() {
         </Link>
 
         <nav style={{ flex: 1 }}>
-          {NAV_ITEMS.map(item => (
-            <button key={item.id} onClick={() => setActive(item.id)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: active === item.id ? 'rgba(123,97,255,0.15)' : 'transparent', color: active === item.id ? '#fff' : '#718096', fontWeight: active === item.id ? 600 : 400, fontSize: '0.9rem', marginBottom: '4px', textAlign: 'left' }}>
-              <span style={{ color: active === item.id ? '#7B61FF' : '#4A5568' }}>{item.icon}</span>
-              {item.label}
-              {active === item.id && <ChevronRight size={14} style={{ marginLeft: 'auto', color: '#7B61FF' }} />}
-            </button>
-          ))}
+          {NAV_ITEMS.map(item => {
+            const isActive = active === item.id
+            const inner = (
+              <>
+                <span style={{ color: isActive ? '#7B61FF' : '#4A5568' }}>{item.icon}</span>
+                {item.label}
+                {isActive && <ChevronRight size={14} style={{ marginLeft: 'auto', color: '#7B61FF' }} />}
+              </>
+            )
+            const style = { width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer', background: isActive ? 'rgba(123,97,255,0.15)' : 'transparent', color: isActive ? '#fff' : '#718096', fontWeight: isActive ? 600 : 400, fontSize: '0.9rem', marginBottom: '4px', textAlign: 'left', textDecoration: 'none' }
+            return item.to
+              ? <Link key={item.id} to={item.to} style={style}>{inner}</Link>
+              : <button key={item.id} onClick={() => setActive(item.id)} style={style}>{inner}</button>
+          })}
         </nav>
 
         <div style={{ borderTop: '1px solid rgba(123,97,255,0.1)', paddingTop: '16px' }}>

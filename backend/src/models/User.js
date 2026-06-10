@@ -51,6 +51,7 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: Date,
 
   isActive: { type: Boolean, default: true },
+  lastSpinDate: { type: Date },
 }, { timestamps: true })
 
 // Hash password before save

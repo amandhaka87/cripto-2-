@@ -55,6 +55,14 @@ export const depositAPI = {
   reject: (txId, reason) => api.patch(`/deposit/${txId}/reject`, { reason }),
 }
 
+// Leaderboard & Spin
+export const leaderboardAPI = {
+  getTopReferrals: () => api.get('/leaderboard/referrals'),
+  getTopInvestors: () => api.get('/leaderboard/investors'),
+  getMyRank: () => api.get('/leaderboard/my-rank'),
+  spin: () => api.post('/leaderboard/spin'),
+}
+
 // Admin
 export const adminAPI = {
   getStats: () => api.get('/admin/stats'),

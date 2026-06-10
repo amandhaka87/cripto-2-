@@ -107,9 +107,30 @@ export const confirmDeposit = async (req, res) => {
     await tx.save()
 
     // Activate user plan
-    await User.findByIdAndUpdate(tx.user._id, {
+    const depositor = await User.findByIdAndUpdate(tx.user._id, {
       'activePlan.status': 'active',
-    })
+    }, { new: true })
+
+    // Referral bonus — pay referrer
+    const REFERRAL_PCT = { Silver: 3, Gold: 5, Platinum: 7 }
+    if (depositor?.referredBy) {
+      const pct = REFERRAL_PCT[tx.plan] || 3
+      const bonus = (tx.amount * pct) / 100
+
+      await User.findByIdAndUpdate(depositor.referredBy, {
+        $inc: { 'wallet.balance': bonus, 'wallet.totalEarned': bonus, referralEarnings: bonus },
+      })
+
+      await Transaction.create({
+        user: depositor.referredBy,
+        type: 'referral_bonus',
+        amount: bonus,
+        status: 'completed',
+        plan: tx.plan,
+        notes: `Referral bonus (${pct}%) from ${depositor.name}`,
+        processedAt: new Date(),
+      })
+    }
 
     res.json({ success: true, message: 'Deposit confirmed. Plan activated.' })
   } catch (err) {

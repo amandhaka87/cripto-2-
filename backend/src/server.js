@@ -10,6 +10,7 @@ import userRoutes from './routes/user.js'
 import planRoutes from './routes/plan.js'
 import adminRoutes from './routes/admin.js'
 import depositRoutes from './routes/deposit.js'
+import leaderboardRoutes from './routes/leaderboard.js'
 
 dotenv.config()
 
@@ -33,6 +34,7 @@ app.use('/api/user', userRoutes)
 app.use('/api/plans', planRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/deposit', depositRoutes)
+app.use('/api/leaderboard', leaderboardRoutes)
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }))
 
