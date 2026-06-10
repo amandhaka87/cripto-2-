@@ -1,15 +1,28 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Eye, EyeOff, Zap, Lock, Mail } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff, Zap, Lock, Mail, AlertCircle } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
   const [show, setShow] = useState(false)
   const [form, setForm] = useState({ email: '', password: '' })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // TODO: connect to API
-    alert('Login coming soon — backend integration pending')
+    setError('')
+    setLoading(true)
+    try {
+      const user = await login(form.email, form.password)
+      navigate(user.role === 'admin' ? '/admin' : '/dashboard')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -31,28 +44,24 @@ export default function Login() {
           <p style={{ color: '#A0AEC0', fontSize: '0.9rem' }}>Sign in to your investment account</p>
         </div>
 
-        <div style={{
-          background: 'rgba(22,24,48,0.9)', border: '1px solid rgba(123,97,255,0.2)',
-          borderRadius: '20px', padding: '36px 32px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-        }}>
+        <div style={{ background: 'rgba(22,24,48,0.9)', border: '1px solid rgba(123,97,255,0.2)', borderRadius: '20px', padding: '36px 32px', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+
+          {error && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.3)', borderRadius: '10px', padding: '12px 14px', marginBottom: '20px', color: '#FF6B6B', fontSize: '0.88rem' }}>
+              <AlertCircle size={16} style={{ flexShrink: 0 }} /> {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label style={{ display: 'block', color: '#A0AEC0', fontSize: '0.85rem', fontWeight: 500, marginBottom: '8px' }}>Email Address</label>
               <div style={{ position: 'relative' }}>
                 <Mail size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#4A5568' }} />
-                <input
-                  type="email" required placeholder="you@example.com"
+                <input type="email" required placeholder="you@example.com"
                   value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
-                  style={{
-                    width: '100%', padding: '12px 12px 12px 42px',
-                    background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(123,97,255,0.2)',
-                    borderRadius: '10px', color: '#fff', fontSize: '0.95rem', outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
+                  style={{ width: '100%', padding: '12px 12px 12px 42px', background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(123,97,255,0.2)', borderRadius: '10px', color: '#fff', fontSize: '0.95rem', outline: 'none' }}
                   onFocus={e => e.target.style.borderColor = '#7B61FF'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(123,97,255,0.2)'}
-                />
+                  onBlur={e => e.target.style.borderColor = 'rgba(123,97,255,0.2)'} />
               </div>
             </div>
 
@@ -63,18 +72,11 @@ export default function Login() {
               </div>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#4A5568' }} />
-                <input
-                  type={show ? 'text' : 'password'} required placeholder="••••••••"
+                <input type={show ? 'text' : 'password'} required placeholder="••••••••"
                   value={form.password} onChange={e => setForm({ ...form, password: e.target.value })}
-                  style={{
-                    width: '100%', padding: '12px 42px 12px 42px',
-                    background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(123,97,255,0.2)',
-                    borderRadius: '10px', color: '#fff', fontSize: '0.95rem', outline: 'none',
-                    transition: 'border-color 0.2s',
-                  }}
+                  style={{ width: '100%', padding: '12px 42px', background: 'rgba(11,12,30,0.8)', border: '1px solid rgba(123,97,255,0.2)', borderRadius: '10px', color: '#fff', fontSize: '0.95rem', outline: 'none' }}
                   onFocus={e => e.target.style.borderColor = '#7B61FF'}
-                  onBlur={e => e.target.style.borderColor = 'rgba(123,97,255,0.2)'}
-                />
+                  onBlur={e => e.target.style.borderColor = 'rgba(123,97,255,0.2)'} />
                 <button type="button" onClick={() => setShow(!show)}
                   style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#4A5568' }}>
                   {show ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -82,8 +84,9 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="submit" className="btn-primary" style={{ marginTop: '4px', fontSize: '1rem', padding: '14px', width: '100%' }}>
-              Sign In
+            <button type="submit" disabled={loading} className="btn-primary"
+              style={{ marginTop: '4px', fontSize: '1rem', padding: '14px', width: '100%', opacity: loading ? 0.7 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
+              {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
