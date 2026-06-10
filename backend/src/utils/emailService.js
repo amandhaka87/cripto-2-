@@ -264,6 +264,36 @@ export const templates = {
     </p>
     ${btn('Try Again', `${process.env.CLIENT_URL}/withdraw`)}
   `),
+
+  passwordReset: (name, resetUrl) => wrapper(`
+    <h2 style="color:#fff;font-size:1.3rem;margin:0 0 8px;">Reset Your Password 🔑</h2>
+    <p style="color:#A0AEC0;line-height:1.7;margin:0 0 20px;">
+      Hi <strong style="color:#fff">${name}</strong>, we received a request to reset your CriptoX password. Click the button below — this link expires in <strong style="color:#fff">10 minutes</strong>.
+    </p>
+    <div style="text-align:center;">
+      ${btn('Reset Password', resetUrl)}
+    </div>
+    <p style="color:#4A5568;font-size:0.78rem;margin:20px 0 0;text-align:center;">
+      If you did not request this, you can safely ignore this email. Your password will not change.
+    </p>
+    <p style="color:#4A5568;font-size:0.72rem;margin:8px 0 0;text-align:center;word-break:break-all;">
+      ${resetUrl}
+    </p>
+  `),
+
+  passwordResetSuccess: (name) => wrapper(`
+    <h2 style="color:#00FF88;font-size:1.3rem;margin:0 0 8px;">Password Changed ✅</h2>
+    <p style="color:#A0AEC0;line-height:1.7;margin:0 0 20px;">
+      Hi <strong style="color:#fff">${name}</strong>, your CriptoX password has been successfully changed.
+    </p>
+    <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:12px;padding:16px;text-align:center;margin-bottom:16px;">
+      <p style="color:#00FF88;font-weight:700;margin:0;font-size:0.95rem;">Your account is secure.</p>
+    </div>
+    <p style="color:#F6C90E;font-size:0.85rem;margin:0 0 16px;">
+      ⚠️ If you did not make this change, contact support immediately.
+    </p>
+    ${btn('Login Now', `${process.env.CLIENT_URL}/login`)}
+  `),
 }
 
 // ─── SEND FUNCTION ──────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import User from '../models/User.js'
 import { sendTokenResponse, signTempToken } from '../utils/jwt.js'
 import { generateReferralCode } from '../utils/referral.js'
@@ -96,4 +97,73 @@ export const login = async (req, res) => {
 
 export const getMe = async (req, res) => {
   res.json({ success: true, user: req.user.toSafeObject() })
+}
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' })
+
+    const user = await User.findOne({ email })
+    // Always respond with success to prevent email enumeration
+    if (!user) {
+      return res.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
+    }
+
+    const plainToken = crypto.randomBytes(32).toString('hex')
+    const hashedToken = crypto.createHash('sha256').update(plainToken).digest('hex')
+
+    user.passwordResetToken = hashedToken
+    user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000) // 10 min
+    await user.save({ validateBeforeSave: false })
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${plainToken}`
+    sendEmail({
+      to: user.email,
+      subject: '🔑 CriptoX — Password Reset Request',
+      html: templates.passwordReset(user.name, resetUrl),
+    })
+
+    res.json({ success: true, message: 'If that email is registered, a reset link has been sent.' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+}
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: 'Token and new password are required' })
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' })
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: new Date() },
+    })
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired reset link. Please request a new one.' })
+    }
+
+    user.password = password
+    user.passwordResetToken = undefined
+    user.passwordResetExpires = undefined
+    await user.save()
+
+    sendEmail({
+      to: user.email,
+      subject: '✅ CriptoX — Password Changed Successfully',
+      html: templates.passwordResetSuccess(user.name),
+    })
+
+    res.json({ success: true, message: 'Password reset successful. You can now log in.' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
 }

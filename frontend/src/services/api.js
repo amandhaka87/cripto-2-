@@ -33,6 +33,8 @@ export const authAPI = {
   verify2FALogin: (otp, tempToken) => api.post('/auth/2fa/verify-login', { otp }, {
     headers: { Authorization: `Bearer ${tempToken}` },
   }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
 }
 
 // 2FA Setup

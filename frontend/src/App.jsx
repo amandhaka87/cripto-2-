@@ -5,6 +5,8 @@ import { ProtectedRoute, AdminRoute, GuestRoute } from './components/ProtectedRo
 import LandingPage from './pages/LandingPage'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Dashboard from './pages/dashboard/Dashboard'
 import Plans from './pages/dashboard/Plans'
 import Payment from './pages/dashboard/Payment'
@@ -23,6 +25,8 @@ function App() {
 
           <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
           <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
+          <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
+          <Route path="/reset-password" element={<GuestRoute><ResetPassword /></GuestRoute>} />
 
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
